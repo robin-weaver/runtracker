@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#82B1FFFF"/>
+    <title>Run Tracker</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.cyan-light_blue.min.css" />
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/easytimer.js@4.6.0/dist/easytimer.min.js"></script>
+</head>
+<style>
+.app_panel {
+    display: flex;
+    justify-content: center;
+}
+.mdl-cell {
+    text-align: center;
+}
+</style>
+<body>
+<div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+  <div class="mdl-tabs__tab-bar">
+      <a href="#run-panel" class="mdl-tabs__tab is-active">Run</a>
+      <a href="#history-panel" class="mdl-tabs__tab">Running History</a>
+  </div>
+  <div class="mdl-tabs__panel is-active" id="run-panel">
+      <div class="app_panel">
+        <div id="new-run-cont" class="mdl-grid">
+            <div class="mdl-cell mdl-cell--2-col">
+                <label id="time">00:00:00</label>
+            </div>
+            <div class="mdl-cell mdl-cell--2-col">
+                <label id="distance">0</label><label id="unit">km</label>
+            </div>
+            <div class="mdl-cell mdl-cell--1-col">
+                <button class="mdl-button mdl-js-button mdl-button--primary" id="startPauseButton">
+                    <i class="material-icons">play_circle</i>
+                </button>
+            </div>
+            <div class="mdl-cell mdl-cell--1-col">
+                <button class="mdl-button mdl-js-button mdl-button--primary" id="stopButton">
+                    <i class="material-icons">stop_circle</i>
+                </button>
+            </div>
+            <div class="mdl-cell mdl-cell--1-col">
+                <button class="mdl-button mdl-js-button mdl-button--primary" id="idkyetbutton">
+                    <i class="material-icons">more_time</i>
+                </button>
+            </div>
+            <div class="mdl-cell mdl-cell--1-col">
+                <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored" id="discard">
+                    <i class="material-icons">delete_forever</i>
+                </button>
+            </div>
+            <div class="mdl-cell mdl-cell--4-col">
+                <ul id="positions"></ul>
+            </div>
+        </div>
+    </div>
+  </div>
+  <div class="mdl-tabs__panel" id="history-panel">
+
+  </div>
+</div>
+</body>
+<script>
+const timeDisplay = document.querySelector('#time');
+const distanceDisplay = document.querySelector('#distance');
+const positionsList = document.querySelector('#positions');
+
+const timerInstance = new easytimer.Timer();
+const positions = [];
+
+timerInstance.addEventListener('secondsUpdated', () => {
+    timeDisplay.textContent = timerInstance.getTimeValues().toString();
+    if (timerInstance.getTimeValues().seconds % 5 === 0) {
+        navigator.geolocation.getCurrentPosition(position => {
+                positions.push([position.coords.latitude, position.coords.longitude]);
+                const li = positionsList.appendChild(document.createElement('li'));
+                li.textContent = JSON.stringify([position.coords.latitude, position.coords.longitude])
+            })
+        if (positions.length >= 2) {
+            const distance = calculateTotalDistance(positions, 'km')
+            distanceDisplay.textContent = distance.toString();
+        }
+    }
+})
+
+const startPauseButton = document.querySelector('#startPauseButton');
+const stopButton = document.querySelector('#stopButton');
+let running = false;
+stopButton.disabled = !running;
+startPauseButton.addEventListener('click', () => {
+    if (!running) {
+        if (timerInstance.getTotalTimeValues().secondTenths === 0) {
+            positions.length = 0;
+            navigator.geolocation.getCurrentPosition(position => {
+                positions.push([position.coords.latitude, position.coords.longitude]);
+            })
+        }
+        timerInstance.start();
+        startPauseButton.innerHTML = '<i class="material-icons">pause_circle</i>'
+    } else {
+        timerInstance.pause();
+        startPauseButton.innerHTML = '<i class="material-icons">play_circle</i>'
+    }
+    running = !running;
+    stopButton.disabled = running;
+})
+stopButton.addEventListener('click', () => {
+    // saving run details logic
+})
+
+
+function calculateDistance(lat1, lon1, lat2, lon2, unit) {
+  const R = 6371; // Earth's radius in kilometers
+  const rad = Math.PI / 180; // Convert degrees to radians
+
+  const dLat = rad * (lat2 - lat1);
+  const dLon = rad * (lon2 - lon1);
+
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(rad * lat1) * Math.cos(rad * lat2) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  const distance = R * c;
+
+  if (unit === "km") {
+    return distance;
+  } else if (unit === "mi") {
+    return distance * 0.621371; // Convert kilometers to miles
+  } else {
+    throw new Error("Invalid unit. Please use 'km' or 'mi'.");
+  }
+}
+
+
+function calculateTotalDistance(coordinates, unit) {
+  if (coordinates.length < 2) {
+    throw new Error("Array must contain at least two coordinate pairs.");
+  }
+
+  let totalDistance = 0;
+  for (let i = 1; i < coordinates.length; i++) {
+    const prev = coordinates[i - 1];
+    const current = coordinates[i];
+    const distance = calculateDistance(prev[0], prev[1], current[0], current[1], unit);
+    totalDistance += distance;
+  }
+
+  return totalDistance;
+}
+</script>
