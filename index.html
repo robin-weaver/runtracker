@@ -11,12 +11,37 @@
     <script src="https://cdn.jsdelivr.net/npm/easytimer.js@4.6.0/dist/easytimer.min.js"></script>
 </head>
 <style>
+.mdl-tabs {
+    height: 100vh;
+}
+.mdl-grid {
+    border-radius: 5px;
+    box-shadow: 3px 3px 5px 0 rgba(0,0,0,0.6);
+
+    width: 90vw;
+}
 .app_panel {
     display: flex;
     justify-content: center;
 }
+#run-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
 .mdl-cell {
     text-align: center;
+}
+#plot {
+    width: 90vw;
+    max-width: 90vw;
+    min-width: 90vw;
+    height: 30vh;
+}
+dialog {
+    border-radius: 5px;
 }
 </style>
 <body>
@@ -28,6 +53,9 @@
   <div class="mdl-tabs__panel is-active" id="run-panel">
       <div class="app_panel">
         <div id="new-run-cont" class="mdl-grid">
+            <div class="mdl-cell mdl-cell--4-col">
+                <svg id="plot"></svg>
+            </div>
             <div class="mdl-cell mdl-cell--2-col">
                 <label id="time">00:00:00</label>
             </div>
@@ -45,17 +73,14 @@
                 </button>
             </div>
             <div class="mdl-cell mdl-cell--1-col">
-                <button class="mdl-button mdl-js-button mdl-button--primary" id="idkyetbutton">
-                    <i class="material-icons">more_time</i>
+                <button class="mdl-button mdl-js-button mdl-button--primary" id="debug">
+                    <i class="material-icons">bug_report</i>
                 </button>
             </div>
             <div class="mdl-cell mdl-cell--1-col">
                 <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored" id="discard" disabled>
                     <i class="material-icons">delete_forever</i>
                 </button>
-            </div>
-            <div class="mdl-cell mdl-cell--4-col">
-                <ul id="positions"></ul>
             </div>
         </div>
     </div>
@@ -103,9 +128,10 @@ function createModal(title, contentHTML, confirmAction) {
 }
 
 
+
+
 const timeDisplay = document.querySelector('#time');
 const distanceDisplay = document.querySelector('#distance');
-const positionsList = document.querySelector('#positions');
 
 const timerInstance = new easytimer.Timer();
 const positions = [];
@@ -114,15 +140,17 @@ timerInstance.addEventListener('secondsUpdated', () => {
     timeDisplay.textContent = timerInstance.getTimeValues().toString();
     if (timerInstance.getTimeValues().seconds % 5 === 0) {
         navigator.geolocation.getCurrentPosition(position => {
-                positions.push([position.coords.latitude, position.coords.longitude]);
-                const li = positionsList.appendChild(document.createElement('li'));
-                li.textContent = JSON.stringify([position.coords.latitude, position.coords.longitude])
-            })
+            const latestPosition = positions[positions.length - 1];
+            if (latestPosition && latestPosition[0] === position.coords.latitude && latestPosition[1] === position.coords.longitude) {
+                return;
+            }
+            positions.push([position.coords.latitude, position.coords.longitude]);
+})
+
         if (positions.length >= 2) {
             const distance = calculateTotalDistance(positions, 'km')
-            distanceDisplay.textContent = distance.toString();
-            const li = positionsList.appendChild(document.createElement('li'));
-            li.textContent = 'Calculating distance...' // debug for mobile testing
+            distanceDisplay.textContent = distance.toFixed(3);
+            plotGpsCoordinatesToSvg(positions);
         }
     }
 })
@@ -130,6 +158,22 @@ timerInstance.addEventListener('secondsUpdated', () => {
 const startPauseButton = document.querySelector('#startPauseButton');
 const stopButton = document.querySelector('#stopButton');
 const discardRunButton = document.querySelector('#discard');
+const debugButton = document.querySelector('#debug');
+
+
+debugButton.addEventListener('click', () => {
+    let coords = generateSmoothPath(40.730610, -73.935242, 30);
+    plotGpsCoordinatesToSvg(coords);
+    setTimeout(() => {
+        let svg = document.getElementById("plot");
+        if (!coords || coords.length === 0) return;
+        while (svg.firstChild) {
+            svg.removeChild(svg.firstChild);
+         }
+    }, 5000)
+
+})
+
 let running = false;
 stopButton.disabled = !running;
 startPauseButton.addEventListener('click', () => {
@@ -137,6 +181,7 @@ startPauseButton.addEventListener('click', () => {
         if (timerInstance.getTotalTimeValues().secondTenths === 0) {
             positions.length = 0;
             navigator.geolocation.getCurrentPosition(position => {
+
                 positions.push([position.coords.latitude, position.coords.longitude]);
             })
             discardRunButton.disabled = false;
@@ -163,7 +208,7 @@ function resetRun() {
         stopButton.disabled = true;
         startPauseButton.innerHTML = '<i class="material-icons">play_circle</i>';
         running = false;
-        positionsList.innerHTML = '';
+        discardRunButton.disabled = true;
     }
 
 discardRunButton.addEventListener('click', () => {
@@ -215,4 +260,102 @@ function calculateTotalDistance(coordinates, unit) {
 
   return totalDistance;
 }
+
+function plotGpsCoordinatesToSvg(coords) {
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  let svg = document.getElementById("plot");
+
+  if (!coords || coords.length === 0) return;
+
+  // Clear SVG before drawing
+  while (svg.firstChild) {
+    svg.removeChild(svg.firstChild);
+  }
+
+  let svgWidth = svg.clientWidth;
+  let svgHeight = svg.clientHeight;
+
+  let latitudes = coords.map(coord => coord[0]);
+  let longitudes = coords.map(coord => coord[1]);
+
+  let minLat = Math.min(...latitudes);
+  let maxLat = Math.max(...latitudes);
+  let minLon = Math.min(...longitudes);
+  let maxLon = Math.max(...longitudes);
+
+  let margin = 0.05;
+  let drawableWidth = svgWidth * (1 - 2 * margin);
+  let drawableHeight = svgHeight * (1 - 2 * margin);
+
+  let latRange = maxLat - minLat;
+  let lonRange = maxLon - minLon;
+  let xScale = drawableWidth / lonRange;
+  let yScale = drawableHeight / latRange;
+  let scale = Math.min(xScale, yScale);
+
+  let xOffset = (svgWidth - lonRange * scale) / 2;
+  let yOffset = (svgHeight - latRange * scale) / 2;
+
+  function scaleX(lon) {
+    return (lon - minLon) * scale + xOffset;
+  }
+
+  function scaleY(lat) {
+    return svgHeight - ((lat - minLat) * scale + yOffset);
+  }
+
+  let pathData = coords.map((coord, index) => {
+    let x = scaleX(coord[1]);
+    let y = scaleY(coord[0]);
+    return `${index === 0 ? 'M' : 'L'}${x},${y}`;
+  }).join(' ');
+
+  let pathElement = document.createElementNS(svgNamespace, 'path');
+  pathElement.setAttribute("d", pathData);
+  pathElement.setAttribute("stroke", "rgb(0,188,212)");
+  pathElement.setAttribute("stroke-width", 4);
+  pathElement.setAttribute("fill", "none");
+  pathElement.setAttribute("stroke-linejoin", "round");
+  pathElement.setAttribute("stroke-linecap", "round");
+  svg.appendChild(pathElement);
+
+  // Add a circle at the last point
+  let finalPoint = coords[coords.length - 1];
+  let circle = document.createElementNS(svgNamespace, 'circle');
+  circle.setAttribute("cx", scaleX(finalPoint[1]));
+  circle.setAttribute("cy", scaleY(finalPoint[0]));
+  circle.setAttribute("r", 5);
+  circle.setAttribute("fill", "red");
+  svg.appendChild(circle);
+}
+
+function generateSmoothPath(startLat, startLon, numPoints) {
+    let coords = [];
+    let lastDeltaLat = 0;
+    let lastDeltaLon = 0;
+
+    for (let i = 0; i < numPoints; i++) {
+        // Introduce a small random change to the direction
+        let deltaLat = lastDeltaLat + (Math.random() * 0.001 - 0.0005);
+        let deltaLon = lastDeltaLon + (Math.random() * 0.001 - 0.0005);
+
+        // Ensure smoothness by limiting how much direction can change
+        deltaLat = Math.sign(deltaLat) * Math.min(Math.abs(deltaLat), 0.001);
+        deltaLon = Math.sign(deltaLon) * Math.min(Math.abs(deltaLon), 0.001);
+
+        // Update the coordinate
+        startLat += deltaLat;
+        startLon += deltaLon;
+
+        // Add the new point to the array
+        coords.push([startLat, startLon]);
+
+        // Save the deltas for the next iteration
+        lastDeltaLat = deltaLat / 2; // Halve the delta to gradually reduce the change
+        lastDeltaLon = deltaLon / 2; // This makes the path smoother
+    }
+
+    return coords;
+}
+
 </script>
