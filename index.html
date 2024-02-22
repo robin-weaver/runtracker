@@ -7,96 +7,91 @@
     <title>Run Tracker</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.cyan-light_blue.min.css" />
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700" type="text/css">
     <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/easytimer.js@4.6.0/dist/easytimer.min.js"></script>
 </head>
 <style>
-.mdl-tabs {
-    height: 100vh;
-}
-.mdl-grid {
-    border-radius: 5px;
-    box-shadow: 3px 3px 5px 0 rgba(0,0,0,0.6);
-
-    width: 90vw;
-}
 .app_panel {
-    display: flex;
-    justify-content: center;
-}
-#run-panel {
-    height: 100%;
+    height: 100vh;
+    background: #343434;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-start;
+    align-items: start;
+    padding: 8px;
 }
-.mdl-cell {
-    text-align: center;
+.mdl-button {
+    width: 25vw;
 }
 #plot {
     width: 90vw;
-    max-width: 90vw;
-    min-width: 90vw;
     height: 30vh;
 }
 dialog {
+    background: #343434;
     border-radius: 5px;
+}
+.material-icons {
+    font-size: 38px;
+}
+.primary-run-info {
+    align-items: center;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.secondary-run-info {
+    align-items: start;
+}
+.action-buttons {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+.plot-actions-area {
+    width: 100%;
+    justify-content: center
 }
 </style>
 <body>
-<div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
-  <div class="mdl-tabs__tab-bar">
-      <a href="#run-panel" class="mdl-tabs__tab is-active">Run</a>
-      <a href="#history-panel" class="mdl-tabs__tab">Running History</a>
-  </div>
-  <div class="mdl-tabs__panel is-active" id="run-panel">
       <div class="app_panel">
-        <div id="new-run-cont" class="mdl-grid">
-            <div class="mdl-cell mdl-cell--4-col">
-                <svg id="plot"></svg>
-            </div>
-            <div class="mdl-cell mdl-cell--2-col">
-                <label id="time">00:00:00</label>
-            </div>
-            <div class="mdl-cell mdl-cell--2-col">
-                <label id="distance">0</label><label id="unit">km</label>
-            </div>
-            <div class="mdl-cell mdl-cell--1-col">
-                <button class="mdl-button mdl-js-button mdl-button--primary" id="startPauseButton">
+          <div class="primary-run-info">
+              <h1 class="mdl-typography--display-4 mdl-color-text--white" id="distance">0</h1><h6 class="mdl-typography--title mdl-color-text--grey-600" id="unit">km</h6>
+          </div>
+          <div class="secondary-run-info">
+              <h3 class="mdl-typography--display-2 mdl-color-text--white" id="time">00:00:00</h3>
+              <h6 class="mdl-typography--title mdl-color-text--grey-600">Time</h6>
+              <h3 class="mdl-typography--display-2 mdl-color-text--white" id="pace">00:00:00</h3>
+              <h6 class="mdl-typography--title mdl-color-text--grey-600">Pace (not yet implemented)</h6>
+          </div>
+          <div class="plot-actions-area">
+              <svg id="plot"></svg>
+              <div class="action-buttons">
+                  <button class="mdl-button mdl-js-button mdl-button--primary" id="startPauseButton">
                     <i class="material-icons">play_circle</i>
-                </button>
-            </div>
-            <div class="mdl-cell mdl-cell--1-col">
-                <button class="mdl-button mdl-js-button mdl-button--primary" id="stopButton">
+                  </button>
+                  <button class="mdl-button mdl-js-button mdl-button--primary" id="stopButton">
                     <i class="material-icons">stop_circle</i>
-                </button>
-            </div>
-            <div class="mdl-cell mdl-cell--1-col">
-                <button class="mdl-button mdl-js-button mdl-button--primary" id="debug">
+                  </button>
+                  <button class="mdl-button mdl-js-button mdl-button--primary" id="debug">
                     <i class="material-icons">bug_report</i>
-                </button>
-            </div>
-            <div class="mdl-cell mdl-cell--1-col">
-                <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored" id="discard" disabled>
+                  </button>
+                  <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored" id="discard" disabled>
                     <i class="material-icons">delete_forever</i>
-                </button>
-            </div>
+                  </button>
+              </div>
+          </div>
         </div>
-    </div>
-  </div>
-  <div class="mdl-tabs__panel" id="history-panel">
-
-  </div>
-</div>
 </body>
 <dialog id="dialog" class="mdl-dialog">
-    <h4 id="dialog-title" class="mdl-dialog__title"></h4>
-    <div id="dialog-content" class="mdl-dialog__content">
+    <h4 id="dialog-title" class="mdl-dialog__title mdl-color-text--grey-400"></h4>
+    <div id="dialog-content" class="mdl-dialog__content mdl-color-text--grey-400">
     </div>
     <div class="mdl-dialog__actions">
-      <button id="dialog-confirm" type="button" class="mdl-button">Confirm</button>
-      <button id="dialog-cancel" type="button" class="mdl-button close">Cancel</button>
+      <button id="dialog-confirm" type="button" class="mdl-button mdl-color-text--grey-300">Confirm</button>
+      <button id="dialog-cancel" type="button" class="mdl-button close mdl-color-text--grey-300">Cancel</button>
     </div>
 </dialog>
 <script>
@@ -313,7 +308,7 @@ function plotGpsCoordinatesToSvg(coords) {
   let pathElement = document.createElementNS(svgNamespace, 'path');
   pathElement.setAttribute("d", pathData);
   pathElement.setAttribute("stroke", "rgb(0,188,212)");
-  pathElement.setAttribute("stroke-width", 4);
+  pathElement.setAttribute("stroke-width", 6);
   pathElement.setAttribute("fill", "none");
   pathElement.setAttribute("stroke-linejoin", "round");
   pathElement.setAttribute("stroke-linecap", "round");
