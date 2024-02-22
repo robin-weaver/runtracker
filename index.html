@@ -50,7 +50,7 @@
                 </button>
             </div>
             <div class="mdl-cell mdl-cell--1-col">
-                <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored" id="discard">
+                <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored" id="discard" disabled>
                     <i class="material-icons">delete_forever</i>
                 </button>
             </div>
@@ -65,7 +65,44 @@
   </div>
 </div>
 </body>
+<dialog id="dialog" class="mdl-dialog">
+    <h4 id="dialog-title" class="mdl-dialog__title"></h4>
+    <div id="dialog-content" class="mdl-dialog__content">
+    </div>
+    <div class="mdl-dialog__actions">
+      <button id="dialog-confirm" type="button" class="mdl-button">Confirm</button>
+      <button id="dialog-cancel" type="button" class="mdl-button close">Cancel</button>
+    </div>
+</dialog>
 <script>
+
+let dialogConfirmButton = document.querySelector('#dialog-confirm');
+const dialogCancelButton = document.querySelector('#dialog-cancel');
+const dialog = document.querySelector('#dialog');
+const dialogTitle = document.querySelector('#dialog-title');
+const dialogContent = document.querySelector('#dialog-content');
+function hideDialog() {
+    dialog.close();
+    dialogTitle.innerHTML = '';
+    dialogContent.innerHTML = '';
+    dialogConfirmButton.replaceWith(dialogConfirmButton.cloneNode(true));
+}
+
+dialogCancelButton.addEventListener('click', hideDialog)
+
+function createModal(title, contentHTML, confirmAction) {
+    dialogConfirmButton = document.querySelector('#dialog-confirm');
+    dialogTitle.textContent = title;
+    dialogContent.innerHTML = contentHTML;
+    dialogConfirmButton.addEventListener('click', () => {
+        confirmAction();
+        hideDialog();
+    })
+    dialog.showModal();
+    console.log()
+}
+
+
 const timeDisplay = document.querySelector('#time');
 const distanceDisplay = document.querySelector('#distance');
 const positionsList = document.querySelector('#positions');
@@ -84,12 +121,15 @@ timerInstance.addEventListener('secondsUpdated', () => {
         if (positions.length >= 2) {
             const distance = calculateTotalDistance(positions, 'km')
             distanceDisplay.textContent = distance.toString();
+            const li = positionsList.appendChild(document.createElement('li'));
+            li.textContent = 'Calculating distance...' // debug for mobile testing
         }
     }
 })
 
 const startPauseButton = document.querySelector('#startPauseButton');
 const stopButton = document.querySelector('#stopButton');
+const discardRunButton = document.querySelector('#discard');
 let running = false;
 stopButton.disabled = !running;
 startPauseButton.addEventListener('click', () => {
@@ -99,18 +139,39 @@ startPauseButton.addEventListener('click', () => {
             navigator.geolocation.getCurrentPosition(position => {
                 positions.push([position.coords.latitude, position.coords.longitude]);
             })
+            discardRunButton.disabled = false;
         }
         timerInstance.start();
-        startPauseButton.innerHTML = '<i class="material-icons">pause_circle</i>'
+        startPauseButton.innerHTML = '<i class="material-icons">pause_circle</i>';
     } else {
         timerInstance.pause();
-        startPauseButton.innerHTML = '<i class="material-icons">play_circle</i>'
+        startPauseButton.innerHTML = '<i class="material-icons">play_circle</i>';
     }
     running = !running;
     stopButton.disabled = running;
 })
 stopButton.addEventListener('click', () => {
     // saving run details logic
+    // haven't decided if i'll add a db or not
+})
+
+function resetRun() {
+        timeDisplay.textContent = '00:00:00';
+        distanceDisplay.textContent = '0';
+        positions.length = 0;
+        timerInstance.stop();
+        stopButton.disabled = true;
+        startPauseButton.innerHTML = '<i class="material-icons">play_circle</i>';
+        running = false;
+        positionsList.innerHTML = '';
+    }
+
+discardRunButton.addEventListener('click', () => {
+    createModal(
+        'Discard Run',
+        '<p>Are you sure you want to clear the current run progress?</p>',
+        resetRun
+    )
 })
 
 
