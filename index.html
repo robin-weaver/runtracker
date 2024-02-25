@@ -12,8 +12,11 @@
     <script src="https://cdn.jsdelivr.net/npm/easytimer.js@4.6.0/dist/easytimer.min.js"></script>
 </head>
 <style>
+html, body {
+    height: 100%;
+   background: #343434;
+}
 .app_panel {
-    height: 100vh;
     background: #343434;
     display: flex;
     flex-direction: column;
@@ -21,19 +24,14 @@
     align-items: start;
     padding: 8px;
 }
-.mdl-button {
-    width: 25vw;
-}
+
 #plot {
     width: 90vw;
     height: 30vh;
 }
 dialog {
     background: #343434;
-    border-radius: 5px;
-}
-.material-icons {
-    font-size: 38px;
+    border-radius: 15px;
 }
 .primary-run-info {
     align-items: center;
@@ -46,13 +44,23 @@ dialog {
 }
 .action-buttons {
     width: 100%;
+    transition: width 0.5s ease;
     display: flex;
     flex-direction: row;
     justify-content: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    padding-bottom: 8px;
 }
 .plot-actions-area {
     width: 100%;
     justify-content: center
+}
+.app-button {
+    border-radius: 10vh;
+    width: 100%;
+    height: auto;
 }
 </style>
 <body>
@@ -63,24 +71,15 @@ dialog {
           <div class="secondary-run-info">
               <h3 class="mdl-typography--display-2 mdl-color-text--white" id="time">00:00:00</h3>
               <h6 class="mdl-typography--title mdl-color-text--grey-600">Time</h6>
-              <h3 class="mdl-typography--display-2 mdl-color-text--white" id="pace">00:00:00</h3>
-              <h6 class="mdl-typography--title mdl-color-text--grey-600">Pace (not yet implemented)</h6>
+              <h3 class="mdl-typography--display-2 mdl-color-text--white" id="pace">0.0</h3>
+              <h6 class="mdl-typography--title mdl-color-text--grey-600">Pace (min/km)</h6>
           </div>
           <div class="plot-actions-area">
               <svg id="plot"></svg>
               <div class="action-buttons">
-                  <button class="mdl-button mdl-js-button mdl-button--primary" id="startPauseButton">
-                    <i class="material-icons">play_circle</i>
-                  </button>
-                  <button class="mdl-button mdl-js-button mdl-button--primary" id="stopButton">
-                    <i class="material-icons">stop_circle</i>
-                  </button>
-                  <button class="mdl-button mdl-js-button mdl-button--primary" id="debug">
-                    <i class="material-icons">bug_report</i>
-                  </button>
-                  <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored" id="discard" disabled>
-                    <i class="material-icons">delete_forever</i>
-                  </button>
+                  <button class="mdl-button mdl-js-button mdl-button--primary mdl-button--accent mdl-button--raised app-button" id="startPauseButton">Start</button>
+                  <button class="mdl-button mdl-js-button mdl-button--primary mdl-button--accent app-button" id="reset-run" disabled> Reset</button>
+                  <button class="mdl-button mdl-js-button mdl-button--primary mdl-button--accent app-button" id="finish-run" disabled> Finish</button>
               </div>
           </div>
         </div>
@@ -90,8 +89,8 @@ dialog {
     <div id="dialog-content" class="mdl-dialog__content mdl-color-text--grey-400">
     </div>
     <div class="mdl-dialog__actions">
-      <button id="dialog-confirm" type="button" class="mdl-button mdl-color-text--grey-300">Confirm</button>
-      <button id="dialog-cancel" type="button" class="mdl-button close mdl-color-text--grey-300">Cancel</button>
+      <button id="dialog-confirm" type="button" class="mdl-button mdl-button--accent">Confirm</button>
+      <button id="dialog-cancel" type="button" class="mdl-button close">Cancel</button>
     </div>
 </dialog>
 <script>
@@ -145,32 +144,19 @@ timerInstance.addEventListener('secondsUpdated', () => {
         if (positions.length >= 2) {
             const distance = calculateTotalDistance(positions, 'km')
             distanceDisplay.textContent = distance.toFixed(3);
+            const elapsedTime = timerInstance.getTotalTimeValues().seconds;
+            const pace = (elapsedTime / distance) / 60;
+            document.querySelector('#pace').textContent = pace.toFixed(2);
             plotGpsCoordinatesToSvg(positions);
         }
     }
 })
 
 const startPauseButton = document.querySelector('#startPauseButton');
-const stopButton = document.querySelector('#stopButton');
-const discardRunButton = document.querySelector('#discard');
-const debugButton = document.querySelector('#debug');
-
-
-debugButton.addEventListener('click', () => {
-    let coords = generateSmoothPath(40.730610, -73.935242, 30);
-    plotGpsCoordinatesToSvg(coords);
-    setTimeout(() => {
-        let svg = document.getElementById("plot");
-        if (!coords || coords.length === 0) return;
-        while (svg.firstChild) {
-            svg.removeChild(svg.firstChild);
-         }
-    }, 5000)
-
-})
+const finishButton = document.querySelector('#finish-run');
+const discardRunButton = document.querySelector('#reset-run');
 
 let running = false;
-stopButton.disabled = !running;
 startPauseButton.addEventListener('click', () => {
     if (!running) {
         if (timerInstance.getTotalTimeValues().secondTenths === 0) {
@@ -182,15 +168,20 @@ startPauseButton.addEventListener('click', () => {
             discardRunButton.disabled = false;
         }
         timerInstance.start();
-        startPauseButton.innerHTML = '<i class="material-icons">pause_circle</i>';
+        startPauseButton.textContent = 'Pause';
+        finishButton.style.display = 'none'
+        discardRunButton.style.display = 'none'
     } else {
         timerInstance.pause();
-        startPauseButton.innerHTML = '<i class="material-icons">play_circle</i>';
+        startPauseButton.innerHTML = 'Start';
+        finishButton.style.display = 'inline-block'
+        discardRunButton.style.display = 'inline-block'
     }
     running = !running;
-    stopButton.disabled = running;
+    finishButton.disabled = running;
+    discardRunButton.disabled = running
 })
-stopButton.addEventListener('click', () => {
+finishButton.addEventListener('click', () => {
     // saving run details logic
     // haven't decided if i'll add a db or not
 })
@@ -200,9 +191,10 @@ function resetRun() {
         distanceDisplay.textContent = '0';
         positions.length = 0;
         timerInstance.stop();
-        stopButton.disabled = true;
-        startPauseButton.innerHTML = '<i class="material-icons">play_circle</i>';
+        finishButton.disabled = true;
+        startPauseButton.textContent = 'Start';
         running = false;
+        finishButton.disabled = true;
         discardRunButton.disabled = true;
     }
 
@@ -322,35 +314,6 @@ function plotGpsCoordinatesToSvg(coords) {
   circle.setAttribute("r", 5);
   circle.setAttribute("fill", "red");
   svg.appendChild(circle);
-}
-
-function generateSmoothPath(startLat, startLon, numPoints) {
-    let coords = [];
-    let lastDeltaLat = 0;
-    let lastDeltaLon = 0;
-
-    for (let i = 0; i < numPoints; i++) {
-        // Introduce a small random change to the direction
-        let deltaLat = lastDeltaLat + (Math.random() * 0.001 - 0.0005);
-        let deltaLon = lastDeltaLon + (Math.random() * 0.001 - 0.0005);
-
-        // Ensure smoothness by limiting how much direction can change
-        deltaLat = Math.sign(deltaLat) * Math.min(Math.abs(deltaLat), 0.001);
-        deltaLon = Math.sign(deltaLon) * Math.min(Math.abs(deltaLon), 0.001);
-
-        // Update the coordinate
-        startLat += deltaLat;
-        startLon += deltaLon;
-
-        // Add the new point to the array
-        coords.push([startLat, startLon]);
-
-        // Save the deltas for the next iteration
-        lastDeltaLat = deltaLat / 2; // Halve the delta to gradually reduce the change
-        lastDeltaLon = deltaLon / 2; // This makes the path smoother
-    }
-
-    return coords;
 }
 
 </script>
